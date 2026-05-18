@@ -1,0 +1,91 @@
+File Overview: Student Panel Frontend (Module 4)
+This is a Streamlit-based web application that serves as the student-facing chat and study interface for an AI Tutor system. It allows students to ask questions about PDF documents, take quizzes, and view PDFs—all with a clean, academic-themed UI.
+
+### Core Functionality ###
+
+1. Chat Interface (_tab_chat())
+Students ask questions about uploaded PDFs
+Questions are sent to a backend API at http://localhost:8000/ask
+Responses display in chat bubbles with optional source citations
+Chat history is maintained in Streamlit's session state
+Each conversation gets a unique session_id
+
+2. PDF Viewer (_tab_pdf_viewer())
+Dropdown to select and view PDFs in an embedded iframe
+PDFs are streamed from the backend at /pdfs/{pdf_name}
+Displays page-by-page in the browser
+
+3. Quiz Generator (_tab_quiz())
+Generate quiz questions from selected PDFs
+Configurable: number of questions, topic filter
+Backend API: /quiz endpoint
+Features:
+Multiple choice questions with radio buttons
+"Reveal Answer" button to show correct answer + explanation
+Reset functionality
+
+### Key Components ###
+### Component	and Purpose ###
+
+1. API Helpers	api_ask(), api_quiz(), api_list_pdfs(), api_health(), etc. — Handle all backend communication
+
+2. Session State	_init_session(), _new_session(), _clear_chat() — Manage user session, chat history, quiz data
+
+3. Rendering	_render_bubble(), _render_chat_history(), _render_quiz() — Display UI elements
+
+4. Sidebar	_render_sidebar() — Shows backend health, session ID, PDF selector, options
+
+5. Tabs	Three main tabs: Chat, PDF Viewer, Quiz
+
+6. Custom CSS	CUSTOM_CSS — Soft academic theme with green accent colors
+
+### How It Works (Flow) ###
+###Code###
+1. User Opens App
+   ↓
+2. Session State Initialized (unique session_id, empty messages)
+   ↓
+3. Sidebar Rendered
+   ├─ Backend health check
+   ├─ Session controls (new session, clear chat)
+   ├─ PDF selector
+   └─ Options toggle (show source chunks)
+   ↓
+4. Three Tabs Available:
+   ├─ CHAT: User types question → api_ask() → Backend processes → Response with sources
+   ├─ PDF VIEWER: Select PDF from dropdown → Display in iframe
+   └─ QUIZ: Select PDF + num questions → api_quiz() → Display questions with reveal button
+   ↓
+5. Chat History & Quiz State Persisted in Session State
+
+### Key Features ###
+✅ Error Handling: Connection errors, timeouts, HTTP errors gracefully handled
+✅ Session Management: Each student gets a unique session ID; can clear chat or start new session
+✅ Source Attribution: Shows which PDF page each answer came from
+✅ Responsive UI: Clean, academic theme with animations and hover effects
+✅ Accessibility: Proper labels, placeholders, and keyboard support
+✅ State Persistence: Chat history, quiz data, and selections maintained during session
+
+### Backend Dependencies ###
+The app expects a backend API running at http://localhost:8000 with these endpoints:
+
+### Endpoint	Method	Purpose ###
+/ask	POST	Answer a question
+/quiz	POST	Generate quiz questions
+/pdfs	GET	List available PDFs
+/pdfs/{pdf_name}	GET	Stream PDF for viewing
+/health	GET	Check backend status
+/session/{session_id}	DELETE	Clear session history
+
+### Usage ###
+To run this as the main app:
+
+### Python ###
+if __name__ == "__main__":
+    st.set_page_config(...)
+    show_student()
+Or integrate it into a larger dispatcher:
+
+#### Python ####
+if st.session_state.role == "student":
+    show_student()
