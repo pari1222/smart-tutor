@@ -1,0 +1,15 @@
+# =============================================================
+# AI Tutor — Frontend Requirements
+# Install: pip install -r requirements.txt
+# =============================================================
+
+# UI framework for the web application
+streamlit==1.57.0
+
+# HTTP client for communicating with the FastAPI backend
+requests==2.33.1
+
+# Note: uuid, time, subprocess, sys, os, base64, and pathlib
+# are Python standard library modules and do not need to be installed.
+
+# Backend requirements are in project/backend/requirements.txt
