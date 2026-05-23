@@ -9,3 +9,4 @@ chromadb
 pypdf
 groq
 google-generativeai
+python-multipart

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional,List
 
 class AskRequest(BaseModel):
     question: str
@@ -13,3 +14,14 @@ class QuizRequest(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+
+class QuizResponse(BaseModel):
+    questions: List[dict]
+
+
+# upload response
+class UploadResponse(BaseModel):
+    message: str
+    filename: str
+    document_id: str
+
