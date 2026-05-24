@@ -2,23 +2,188 @@ AI-powered education platform where tutors upload syllabus PDFs via an Admin Das
 
 Overview
 
-Module 2 is responsible for building the backend API layer of the AI Tutor application using FastAPI.
+1. FastAPI Application Setup
 
-This module acts as the communication bridge between:
+Initialized the backend server using FastAPI.
 
-Frontend UI
-     ↓
-FastAPI Backend APIs
-     ↓
-RAG Pipeline & Database
+Created:
 
-The backend APIs receive requests from the frontend, process data, handle file uploads, validate requests, and return responses.
-Respinsibilities Covered:
-FastAPI backend setup
-API route creation
-Request/response validation using Pydantic models
-Swagger API documentation
-PDF upload handling
-PDF storage management
-PDF serving endpoints
-Document listing APIs
+FastAPI app instance
+backend routing structure
+local development server setup
+Run Server
+uvicorn backend.main:app --reload
+2. Swagger API Documentation
+
+Used FastAPI auto-generated Swagger UI for API testing and documentation.
+
+Swagger URL
+http://127.0.0.1:8000/docs
+
+This provides:
+
+interactive API testing
+request validation
+response inspection
+backend debugging support
+3. Pydantic Request Validation
+
+Implemented request validation using Pydantic models.
+
+models.py
+
+Implemented:
+
+AskRequest
+AskResponse
+QuizRequest
+HealthResponse
+Example Request Model
+class AskRequest(BaseModel):
+    question: str
+    session_id: str
+
+This ensures:
+
+required fields validation
+automatic request parsing
+structured API communication
+4. Home API
+
+Created root endpoint for backend verification.
+
+Endpoint
+GET /
+Response
+{
+  "message": "AI Tutor Backend Running"
+}
+5. Health Check API
+
+Implemented backend health monitoring endpoint.
+
+Endpoint
+GET /health
+Response
+{
+  "status": "Backend is healthy"
+}
+
+Purpose:
+
+verify backend status
+monitor API availability
+frontend connectivity testing
+6. Ask Question API
+
+Implemented question handling API using POST requests.
+
+Endpoint
+POST /ask
+Request Body
+{
+  "question": "What is Python?",
+  "session_id": "session_001"
+}
+Response
+{
+  "answer": "You asked: What is Python?"
+}
+
+Concepts learned:
+
+POST APIs
+request body handling
+JSON parsing
+request validation
+dynamic response generation
+7. PDF Upload API
+
+Implemented backend PDF upload functionality.
+
+Endpoint
+POST /upload
+
+Features:
+
+upload PDF files
+save files to local storage
+backend file handling
+binary file writing
+Upload Flow
+User uploads PDF
+        ↓
+FastAPI receives file
+        ↓
+Backend saves file
+        ↓
+PDF stored in pdf_store/
+Response
+{
+  "message": "PDF uploaded successfully",
+  "filename": "sample.pdf"
+}
+
+Concepts learned:
+
+UploadFile
+File(...)
+file streams
+Python file handling
+shutil.copyfileobj()
+8. Document Listing API
+
+Implemented API to return uploaded PDF documents.
+
+Endpoint
+GET /documents/list
+Response
+{
+  "documents": [
+    "python.pdf",
+    "ai_notes.pdf"
+  ]
+}
+
+Features:
+
+read files from folder
+filter PDF files
+return document lists to frontend
+
+Concepts learned:
+
+os.listdir()
+loops
+file filtering
+list responses
+9. PDF Serving API
+
+Implemented API for opening uploaded PDFs directly in browser.
+
+Endpoint
+GET /documents/{filename}
+Example
+/documents/python_notes.pdf
+
+Features:
+
+dynamic URL parameters
+serve PDFs from backend
+browser PDF viewing
+file existence validation
+
+Concepts learned:
+
+path parameters
+FileResponse
+file serving
+backend document streaming
+Backend APIs Completed
+Method	Endpoint	Purpose
+GET	/	Home route
+GET	/health	Health check
+POST	/ask	Ask question
+POST	/upload	Upload PDF
+GET	/documents/list	List uploaded PDFs
+GET	/documents/{filename}	Open PDF in browser
