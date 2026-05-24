@@ -18,7 +18,8 @@ class HealthResponse(BaseModel):
 class QuizResponse(BaseModel):
     questions: List[dict]
 
-
+class QuizResponse(BaseModel):
+    questions: list[str]
 # upload response
 class UploadResponse(BaseModel):
     message: str
