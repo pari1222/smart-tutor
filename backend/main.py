@@ -1,16 +1,40 @@
+from backend.rag_pipeline import (
+    process_pdf,
+    ask_pdf
+)
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from backend.models import (
     AskRequest,
     QuizRequest,
-    QuizResponse
+    QuizResponse,
+    HealthResponse, 
+    UploadResponse,
+
 )
 import shutil
 import os
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
+load_dotenv()
+APP_NAME = os.getenv("APP_NAME")
+DEBUG = os.getenv("DEBUG")
+API_VERSION = os.getenv("API_VERSION")
 
-app = FastAPI()
+app = FastAPI(title=APP_NAME)
 
+app.add_middleware(
+    CORSMiddleware,
+
+    allow_origins=["*"],
+
+    allow_credentials=True,
+
+    allow_methods=["*"],
+
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def home():
@@ -23,11 +47,15 @@ def health():
 @app.post("/ask")
 def ask_question(request: AskRequest):
 
+    answer = ask_pdf(request.question)
+
     return {
-        "answer": f"You asked: {request.question}"
+        "question": request.question,
+        "answer": answer
     }
 @app.post("/upload")
 def upload_pdf(file: UploadFile = File(...)):
+    
 
     try:
 
@@ -43,9 +71,12 @@ def upload_pdf(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
+        process_result = process_pdf(file_path)
+
         return {
             "message": "PDF uploaded successfully",
-            "filename": file.filename
+            "filename": file.filename,
+            "processing": process_result
         }
 
     except Exception as e:
