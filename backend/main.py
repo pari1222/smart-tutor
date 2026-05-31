@@ -5,6 +5,7 @@ from backend.rag_pipeline import (
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from backend.models import (
     AskRequest,
+    AskResponse,
     QuizRequest,
     QuizResponse,
     HealthResponse, 
@@ -22,8 +23,10 @@ APP_NAME = os.getenv("APP_NAME")
 DEBUG = os.getenv("DEBUG")
 API_VERSION = os.getenv("API_VERSION")
 
-app = FastAPI(title=APP_NAME)
-
+app = FastAPI(
+    title=APP_NAME,
+    version=API_VERSION
+)
 app.add_middleware(
     CORSMiddleware,
 
@@ -40,11 +43,14 @@ app.add_middleware(
 def home():
     return {"message": "AI Tutor Backend Running"}
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 def health():
-    return {"status": "Backend is healthy"}
 
-@app.post("/ask")
+    return HealthResponse(
+        status="Backend is healthy"
+    )
+
+@app.post("/ask", response_model=AskResponse)
 def ask_question(request: AskRequest):
 
     answer = ask_pdf(request.question)
@@ -65,7 +71,7 @@ def upload_pdf(file: UploadFile = File(...)):
                 status_code=400,
                 detail="Only PDF files are allowed"
             )
-
+        os.makedirs("pdf_store", exist_ok=True)
         file_path = f"pdf_store/{file.filename}"
 
         with open(file_path, "wb") as buffer:
@@ -96,10 +102,11 @@ def list_documents():
         if file.endswith(".pdf"):
             pdf_files.append(file)
 
-    raise HTTPException(
-    status_code=404,
-    detail="File not found"
-)
+    return {
+        "total_files": len(pdf_files),
+        "documents": pdf_files
+    }
+
 @app.get("/documents/{filename}")
 def get_document(filename: str):
 
@@ -113,9 +120,10 @@ def get_document(filename: str):
             filename=filename
         )
 
-    return {
-        "error": "File not found"
-    }
+    raise HTTPException(
+    status_code=404,
+    detail="File not found"
+)
 @app.post("/quiz", response_model=QuizResponse)
 def generate_quiz(request: QuizRequest):
 
@@ -130,3 +138,19 @@ def generate_quiz(request: QuizRequest):
     return QuizResponse(
         questions=questions
     )
+@app.get("/db-status")
+def db_status():
+
+    from backend.rag_pipeline import collection
+
+    return {
+        "total_chunks": collection.count()
+    }
+@app.get("/test-search")
+def test_search():
+
+    from backend.rag_pipeline import search_chunks
+
+    results = search_chunks("What is smoke testing?")
+
+    return results

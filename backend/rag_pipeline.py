@@ -1,22 +1,30 @@
+
 from pypdf import PdfReader
-
+from groq import Groq
+import os
 import chromadb
-
+import uuid
+from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
-from transformers import pipeline
-from typer import prompt
 
+load_dotenv()
 
 embedding_model = SentenceTransformer(
     "all-MiniLM-L6-v2"
 )
-generator = pipeline(
-    "text-generation",
-    model="distilgpt2"
+groq_key = os.getenv("GROQ_KEY")
+
+if not groq_key:
+    raise ValueError(
+        "GROQ_KEY not found in .env file"
+    )
+
+client = Groq(api_key=groq_key)
+
+
+chroma_client = chromadb.PersistentClient(
+    path="chroma_db"
 )
-
-chroma_client = chromadb.Client()
-
 collection = chroma_client.get_or_create_collection(
     name="pdf_documents"
 )
@@ -37,8 +45,7 @@ def chunk_text(text, chunk_size=500):
 
 def store_chunks(chunks):
 
-    for index, chunk in enumerate(chunks):
-
+    for chunk in chunks:
         embedding = embedding_model.encode(chunk)
 
         collection.add(
@@ -46,8 +53,9 @@ def store_chunks(chunks):
 
             embeddings=[embedding.tolist()],
 
-            ids=[f"chunk_{index}"]
+            ids=[str(uuid.uuid4())]
         )
+
 def search_chunks(query, top_k=3):
 
     query_embedding = embedding_model.encode(query)
@@ -58,39 +66,52 @@ def search_chunks(query, top_k=3):
     )
 
     return results
+
 def ask_pdf(question):
 
-    results = search_chunks(question)
+    try:
 
-    documents = results.get("documents", [])
+        results = search_chunks(question)
 
-    if not documents:
-        return "No relevant answer found."
+        documents = results.get("documents", [])
 
-    matched_chunks = documents[0]
+        if not documents or len(documents[0]) == 0:
+            return "No relevant answer found."
 
-    context = "\n".join(matched_chunks)
+        context = "\n".join(documents[0])
 
-    prompt = f"""
-    Context:
-    {context}
+        prompt = f"""
+You are an AI Tutor.
 
-    Question:
-    {question}
+Answer the question using ONLY the provided context.
 
-Answer briefly and clearly.
+Context:
+{context}
+
+Question:
+{question}
+
+If the answer is not available in the context, reply:
+I could not find the answer in the uploaded document.
 """
 
-    response = generator(
-        prompt,
-        max_new_tokens=100
-    )
+        response = client.chat.completions.create(
+           model="llama-3.3-70b-versatile",
+           messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
 
-    generated_text = response[0]["generated_text"]
+        return response.choices[0].message.content
 
-    answer = generated_text.replace(prompt, "").strip()
+    except Exception as e:
 
-    return answer
+        print("GROQ ERROR:", str(e))
+
+        return f"Error: {str(e)}"
 
 def process_pdf(file_path):
 
@@ -104,6 +125,11 @@ def process_pdf(file_path):
 
         if text:
             full_text += text
+
+    if not full_text.strip():
+        raise ValueError(
+        "No text could be extracted from PDF"
+    )
 
     chunks = chunk_text(full_text)
 

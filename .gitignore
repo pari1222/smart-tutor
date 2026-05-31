@@ -2,4 +2,8 @@ backend/.env
 backend/__pycache__
 backend/__pycache__/main.cpython-313.pyc
 backend/__pycache__/main.cpython-313.opt-1.pyc
-backend/__pycache__/main.cpython-313.opt-2.pyc  
+backend/__pycache__/main.cpython-313.opt-2.pyc
+backend/__pycache__/rag_pipeline.cpython-313.pyc
+backend/__pycache__/rag_pipeline.cpython-313.opt-1.pyc
+backend/__pycache__/rag_pipeline.cpython-313.opt-2.pyc
+
