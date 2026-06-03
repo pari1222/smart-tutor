@@ -187,3 +187,18 @@ POST	/ask	Ask question
 POST	/upload	Upload PDF
 GET	/documents/list	List uploaded PDFs
 GET	/documents/{filename}	Open PDF in browser
+
+## RAG Features Implemented
+
+- PDF Upload API
+- PDF Text Extraction using PyPDF
+- Text Chunking
+- Embedding Generation using Sentence Transformers
+- ChromaDB Vector Storage
+- Semantic Search
+- Groq LLM Integration
+- Question Answering from Uploaded PDFs
+- Quiz Generation from PDF Content
+- Source Citation Support
+- FastAPI REST APIs
+- Swagger Documentation
