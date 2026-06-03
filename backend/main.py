@@ -1,10 +1,9 @@
-from xmlrpc import client
 
 from backend.rag_pipeline import (
     process_pdf,
     ask_pdf,
-    generate_quiz_from_pdf
-
+    generate_quiz_from_pdf,
+    get_db_stats
 )
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from backend.models import (
@@ -12,15 +11,23 @@ from backend.models import (
     AskResponse,
     QuizRequest,
     QuizResponse,
-    HealthResponse, 
+    HealthResponse,
     UploadResponse,
-
+    StatsResponse,
+    DocumentInfoResponse,
+    DeleteResponse
 )
 import shutil
 import os
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from backend.metadata import (
+    load_metadata,
+    save_metadata
+)
+
+from datetime import datetime
 
 load_dotenv()
 APP_NAME = os.getenv("APP_NAME")
@@ -57,20 +64,26 @@ def health():
 @app.post("/ask", response_model=AskResponse)
 def ask_question(request: AskRequest):
 
-    answer = ask_pdf(request.question)
+    result = ask_pdf(
+        request.question,
+        request.session_id,
+        request.document_id
+    )
 
-    return {
-        "question": request.question,
-        "answer": answer
-    }
-@app.post("/upload")
+    return AskResponse(
+        answer=result["answer"],
+        source=result["source"]
+    )
+@app.post(
+    "/upload",
+    response_model=UploadResponse
+)
 def upload_pdf(file: UploadFile = File(...)):
     
 
     try:
 
-        if not file.filename.endswith(".pdf"):
-
+        if not file.filename.lower().endswith(".pdf"):
             raise HTTPException(
                 status_code=400,
                 detail="Only PDF files are allowed"
@@ -82,11 +95,23 @@ def upload_pdf(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
 
         process_result = process_pdf(file_path)
+        metadata = load_metadata()
+
+        metadata[file.filename] = {
+            "pages": process_result["pages"],
+            "chunks": process_result["chunks"],
+            "upload_date": str(
+                datetime.now().date()
+            )
+        }
+
+        save_metadata(metadata)
+        print("metadata saved successfully")
 
         return {
             "message": "PDF uploaded successfully",
             "filename": file.filename,
-            "processing": process_result
+        "document_id": file.filename
         }
 
     except Exception as e:
@@ -128,14 +153,81 @@ def get_document(filename: str):
     status_code=404,
     detail="File not found"
 )
+@app.get(
+    "/documents/{filename}/info",
+    response_model=DocumentInfoResponse
+)
+def get_document_info(
+    filename: str
+):
+
+    metadata = load_metadata()
+
+    if filename not in metadata:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found"
+        )
+
+    return {
+        "filename": filename,
+        **metadata[filename]
+    }
+@app.delete(
+    "/documents/{filename}",
+    response_model=DeleteResponse
+)
+def delete_document(filename: str):
+
+    file_path = f"pdf_store/{filename}"
+
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found"
+        )
+
+    os.remove(file_path)
+
+    metadata = load_metadata()
+
+    if filename in metadata:
+        del metadata[filename]
+        save_metadata(metadata)
+
+    return DeleteResponse(
+        message=f"{filename} deleted successfully"
+    )
 @app.post("/quiz", response_model=QuizResponse)
 def generate_quiz(request: QuizRequest):
 
     questions = generate_quiz_from_pdf(
         request.topic,
+        request.document_id,
         request.num_questions
     )
 
     return QuizResponse(
         questions=questions
+    )
+
+@app.get(
+    "/stats",
+    response_model=StatsResponse
+)
+def get_stats():
+
+    os.makedirs("pdf_store", exist_ok=True)
+    pdf_files = [
+        file
+        for file in os.listdir("pdf_store")
+        if file.endswith(".pdf")
+    ]
+
+    stats = get_db_stats()
+
+    return StatsResponse(
+        total_documents=len(pdf_files),
+        total_chunks=stats["total_chunks"]
     )

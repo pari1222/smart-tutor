@@ -7,7 +7,6 @@ import uuid
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 
-
 load_dotenv()
 
 embedding_model = SentenceTransformer(
@@ -22,6 +21,7 @@ if not groq_key:
 
 client = Groq(api_key=groq_key)
 
+chat_history = {}
 
 chroma_client = chromadb.PersistentClient(
     path="chroma_db"
@@ -43,56 +43,97 @@ def chunk_text(text, chunk_size=500):
 
     return chunks
 
-
-def store_chunks(chunks):
+def store_chunks(chunks, document_id):
 
     for chunk in chunks:
+
         embedding = embedding_model.encode(chunk)
 
         collection.add(
             documents=[chunk],
-
             embeddings=[embedding.tolist()],
-
-            ids=[str(uuid.uuid4())]
+            ids=[str(uuid.uuid4())],
+            metadatas=[
+                {
+                    "document_id": document_id
+                }
+            ]
         )
 
-def search_chunks(query, top_k=3):
-
+def search_chunks(
+    query,
+    document_id,
+    top_k=3
+):
     query_embedding = embedding_model.encode(query)
 
     results = collection.query(
-        query_embeddings=[query_embedding.tolist()],
-        n_results=top_k
+        query_embeddings=[
+            query_embedding.tolist()
+        ],
+        n_results=top_k,
+        where={
+            "document_id": document_id
+        }
     )
 
     return results
-
-def ask_pdf(question):
+def ask_pdf(
+    question,
+    session_id,
+    document_id
+):
 
     try:
+        if session_id not in chat_history:
+            chat_history[session_id] = []
 
-        results = search_chunks(question)
+        results = search_chunks(question, document_id)
 
         documents = results.get("documents", [])
 
         if not documents or len(documents[0]) == 0:
-            return "No relevant answer found."
+            return {
+                "answer": "No relevant answer found.",
+                "source": None
+            }
 
         context = "\n".join(documents[0])
+        chat_history[session_id].append(
+            {
+                "role": "user",
+                "content": question
+            }
+        )
+        conversation = ""
 
+        for message in chat_history[session_id]:
+
+            conversation += (
+                f"{message['role']}: "
+                f"{message['content']}\n"
+            )
+        print("\n===== CHAT HISTORY =====")
+
+        for msg in chat_history[session_id]:
+            print(msg)
+
+        print("========================\n")
         prompt = f"""
 You are an AI Tutor.
 
-Answer the question using ONLY the provided context.
+Previous Conversation:
+{conversation}
 
-Context:
+Document Context:
 {context}
 
-Question:
+Current Question:
 {question}
 
-If the answer is not available in the context, reply:
+Answer using the document context and conversation history.
+
+If the answer is not available in the document context, reply:
 I could not find the answer in the uploaded document.
 """
 
@@ -106,13 +147,26 @@ I could not find the answer in the uploaded document.
             ]
         )
 
-        return response.choices[0].message.content
+        answer = response.choices[0].message.content
+        chat_history[session_id].append(
+            {
+                "role": "assistant",
+                "content": answer
+            }
+)
 
+        return {
+            "answer": answer,
+            "source": documents[0][0][:300]
+        }
     except Exception as e:
 
         print("GROQ ERROR:", str(e))
 
-        return f"Error: {str(e)}"
+        return {
+            "answer": f"Error: {str(e)}",
+            "source": None
+        }
 
 def process_pdf(file_path):
 
@@ -129,12 +183,15 @@ def process_pdf(file_path):
 
     if not full_text.strip():
         raise ValueError(
-        "No text could be extracted from PDF"
+            "No text could be extracted from PDF"
     )
 
     chunks = chunk_text(full_text)
 
-    store_chunks(chunks)
+    store_chunks(
+            chunks,
+            os.path.basename(file_path)
+    )
 
     print("\n===== CHUNK PREVIEW =====\n")
 
@@ -145,17 +202,21 @@ def process_pdf(file_path):
         print(chunk[:300])
 
     print("\n=========================\n")
-
+    page_count = len(reader.pages)
     return {
         "status": "PDF processed successfully",
         "characters": len(full_text),
+        "pages":page_count,
         "chunks": len(chunks),
         "stored_in_vector_db": True
     }
 
-def generate_quiz_from_pdf(topic, num_questions=5):
-
-    results = search_chunks(topic)
+def generate_quiz_from_pdf(
+    topic,
+    document_id,
+    num_questions=5
+):
+    results = search_chunks(topic, document_id)
 
     documents = results.get("documents", [])
 
@@ -200,3 +261,11 @@ Context:
     ]
 
     return questions
+def get_db_stats():
+
+    total_chunks = collection.count()
+
+    return {
+        "total_chunks": total_chunks
+    }
+

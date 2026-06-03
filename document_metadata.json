@@ -1,0 +1,22 @@
+{
+    "Basic java.pdf": {
+        "pages": 2,
+        "chunks": 10,
+        "upload_date": "2026-06-03"
+    },
+    "Java Notes .pdf": {
+        "pages": 80,
+        "chunks": 168,
+        "upload_date": "2026-06-03"
+    },
+    "Java Oops Concepts Notes .pdf": {
+        "pages": 33,
+        "chunks": 113,
+        "upload_date": "2026-06-03"
+    },
+    "Postman.pdf": {
+        "pages": 110,
+        "chunks": 135,
+        "upload_date": "2026-06-03"
+    }
+}
