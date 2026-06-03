@@ -7,6 +7,7 @@ import uuid
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 
+
 load_dotenv()
 
 embedding_model = SentenceTransformer(
@@ -151,3 +152,51 @@ def process_pdf(file_path):
         "chunks": len(chunks),
         "stored_in_vector_db": True
     }
+
+def generate_quiz_from_pdf(topic, num_questions=5):
+
+    results = search_chunks(topic)
+
+    documents = results.get("documents", [])
+
+    if not documents or len(documents[0]) == 0:
+        return ["No content found for quiz generation"]
+
+    context = "\n".join(documents[0])
+
+    prompt = f"""
+You are an AI Tutor.
+
+Using ONLY the provided context, generate exactly {num_questions}
+multiple-choice quiz questions.
+
+Rules:
+- Return only the quiz questions.
+- Each question must have 4 options.
+- Do not include introductions.
+- Do not include explanations.
+- Do not include any text before Question 1.
+
+Context:
+{context}
+"""
+
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    quiz_text = response.choices[0].message.content
+
+    questions = [
+        line.strip()
+        for line in quiz_text.split("\n")
+        if line.strip()
+    ]
+
+    return questions

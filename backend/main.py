@@ -1,6 +1,10 @@
+from xmlrpc import client
+
 from backend.rag_pipeline import (
     process_pdf,
-    ask_pdf
+    ask_pdf,
+    generate_quiz_from_pdf
+
 )
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from backend.models import (
@@ -127,30 +131,11 @@ def get_document(filename: str):
 @app.post("/quiz", response_model=QuizResponse)
 def generate_quiz(request: QuizRequest):
 
-    questions = []
-
-    for i in range(request.num_questions):
-
-        questions.append(
-            f"{i+1}. Explain {request.topic}"
-        )
+    questions = generate_quiz_from_pdf(
+        request.topic,
+        request.num_questions
+    )
 
     return QuizResponse(
         questions=questions
     )
-@app.get("/db-status")
-def db_status():
-
-    from backend.rag_pipeline import collection
-
-    return {
-        "total_chunks": collection.count()
-    }
-@app.get("/test-search")
-def test_search():
-
-    from backend.rag_pipeline import search_chunks
-
-    results = search_chunks("What is smoke testing?")
-
-    return results
