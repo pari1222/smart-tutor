@@ -143,6 +143,69 @@ st.markdown("""
     gap: 12px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
+/* ── Sidebar section header ── */
+.sidebar-section {
+    font-size: 0.7em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin: 16px 0 6px 0;
+}
+/* ── Doc pill in sidebar ── */
+.doc-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,120,212,0.08);
+    border: 1px solid rgba(0,120,212,0.18);
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin: 4px 0;
+    font-size: 0.82em;
+    color: #cdd5e0;
+    word-break: break-all;
+}
+.doc-pill span.dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #0078D4;
+    flex-shrink: 0;
+}
+/* ── Status chip ── */
+.status-online {
+    display:inline-flex; align-items:center; gap:6px;
+    background:#0d3320; color:#4caf7d;
+    border:1px solid #1e5c3a;
+    border-radius:20px; padding:4px 12px;
+    font-size:0.78em; font-weight:600;
+}
+.status-offline {
+    display:inline-flex; align-items:center; gap:6px;
+    background:#3a0d0d; color:#f07070;
+    border:1px solid #5c1e1e;
+    border-radius:20px; padding:4px 12px;
+    font-size:0.78em; font-weight:600;
+}
+.pulse { width:8px; height:8px; border-radius:50%; background:#4caf7d; }
+.pulse-off { width:8px; height:8px; border-radius:50%; background:#f07070; }
+/* ── User profile block ── */
+.profile-block {
+    display:flex; align-items:center; gap:12px;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:4px;
+}
+.avatar {
+    width:38px; height:38px; border-radius:50%;
+    background: linear-gradient(135deg,#0078D4,#00b4d8);
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.1em; font-weight:700; color:white; flex-shrink:0;
+}
+.profile-name { font-weight:600; font-size:0.92em; color:#e8eaf0; }
+.profile-role { font-size:0.73em; color:#8892a4; margin-top:1px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -266,23 +329,23 @@ def render_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
-        # Backend status
-        if api_health():
-            st.success("Backend online", icon="🟢")
-        else:
-            st.error("Backend offline", icon="🔴")
+        # Backend status (admin only — students get their own styled chip)
+        if st.session_state.role == "admin":
+            if api_health():
+                st.success("Backend online", icon="🟢")
+            else:
+                st.error("Backend offline", icon="🔴")
 
-        st.divider()
+            st.divider()
 
-        # Logout
-        if st.button("🚪 Logout", use_container_width=True):
-            for key in ["logged_in", "role", "username", "chat_history",
-                        "quiz_data", "session_id"]:
-                st.session_state[key] = None if key in ["role","username"] else \
-                                        False if key == "logged_in" else \
-                                        [] if key == "chat_history" else \
-                                        str(uuid.uuid4()) if key == "session_id" else None
-            st.rerun()
+            if st.button("🚪 Logout", use_container_width=True):
+                for key in ["logged_in", "role", "username", "chat_history",
+                            "quiz_data", "session_id"]:
+                    st.session_state[key] = None if key in ["role","username"] else \
+                                            False if key == "logged_in" else \
+                                            [] if key == "chat_history" else \
+                                            str(uuid.uuid4()) if key == "session_id" else None
+                st.rerun()
 
 # ─────────────────────────────────────────────
 # ADMIN DASHBOARD
@@ -373,36 +436,108 @@ def show_admin():
 def show_student():
     render_sidebar()
 
-    # Quiz controls in sidebar
+    # ── Student Sidebar ──────────────────────────
     with st.sidebar:
-        st.subheader("📝 Quiz Generator")
-        quiz_topic = st.text_input("Topic", placeholder="e.g. Python, Recursion...")
-        num_q = st.slider("Questions", 3, 10, 5)
-        if st.button("🎯 Generate Quiz", use_container_width=True, type="primary"):
+
+        # 1. Profile block
+        uname = st.session_state.username or "student"
+        avatar_letter = uname[0].upper()
+        st.markdown(f"""
+        <div class="profile-block">
+            <div class="avatar">{avatar_letter}</div>
+            <div>
+                <div class="profile-name">{uname}</div>
+                <div class="profile-role">🧑‍🎓 Student</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 2. Backend status chip
+        if api_health():
+            st.markdown(
+                '<div class="status-online"><span class="pulse"></span>Backend Online</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="status-offline"><span class="pulse-off"></span>Backend Offline</div>',
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<div style='margin:10px 0'></div>", unsafe_allow_html=True)
+
+        # 3. Available Documents
+        st.markdown('<div class="sidebar-section">📚 Available Documents</div>', unsafe_allow_html=True)
+        pdf_list = api_list_pdfs()
+        if pdf_list:
+            for fname in pdf_list:
+                short = fname if len(fname) <= 28 else fname[:25] + "..."
+                st.markdown(
+                    f'<div class="doc-pill"><span class="dot"></span>{short}</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("No documents uploaded yet.")
+
+        st.divider()
+
+        # 4. Quiz Generator
+        st.markdown('<div class="sidebar-section">🧠 Quiz Generator</div>', unsafe_allow_html=True)
+        quiz_topic = st.text_input(
+            "Topic",
+            placeholder="e.g. TCP/IP, OSI Model...",
+            label_visibility="collapsed",
+            key="quiz_topic_input",
+        )
+        num_q = st.slider("Number of Questions", min_value=3, max_value=10, value=5)
+
+        if st.button("⚡ Generate Quiz", use_container_width=True, type="primary"):
             if not quiz_topic.strip():
                 st.warning("Enter a topic first.")
             else:
                 with st.spinner("Generating quiz..."):
                     try:
-                        st.session_state.quiz_data = api_quiz(quiz_topic, num_q)
-                        st.success(f"Quiz ready!")
+                        st.session_state.quiz_data = api_quiz(quiz_topic.strip(), num_q)
+                        st.success(f"✅ {len(st.session_state.quiz_data['questions'])} questions ready!")
                     except requests.HTTPError as e:
                         st.error(e.response.json().get("detail", str(e)))
                     except Exception as e:
                         st.error(str(e))
 
         st.divider()
+
+        # 5. Chat Options
+        st.markdown('<div class="sidebar-section">⚙️ Chat Options</div>', unsafe_allow_html=True)
         st.session_state.show_sources = st.toggle(
             "Show source chunks",
             value=st.session_state.show_sources,
         )
-        if st.button("🗑️ Clear Chat", use_container_width=True):
-            api_clear_session(st.session_state.session_id)
-            st.session_state.chat_history = []
-            st.session_state.session_id   = str(uuid.uuid4())
-            st.session_state.quiz_data    = None
-            st.rerun()
 
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("🗑️ Clear Chat", use_container_width=True):
+                api_clear_session(st.session_state.session_id)
+                st.session_state.chat_history = []
+                st.session_state.session_id   = str(uuid.uuid4())
+                st.session_state.quiz_data    = None
+                st.rerun()
+        with col_b:
+            if st.button("🚪 Logout", use_container_width=True):
+                for key in ["logged_in", "role", "username", "chat_history", "quiz_data", "session_id"]:
+                    st.session_state[key] = (
+                        None  if key in ["role", "username"] else
+                        False if key == "logged_in" else
+                        []    if key == "chat_history" else
+                        str(uuid.uuid4()) if key == "session_id" else
+                        None
+                    )
+                st.rerun()
+
+        # 6. Session info at bottom
+        st.markdown("<div style='margin-top:auto'></div>", unsafe_allow_html=True)
+        st.caption(f"Session: `{st.session_state.session_id[:8]}...`")
+
+    # ── Main content ─────────────────────────────
     st.title("🧑‍🎓 Student Portal")
 
     tab_chat, tab_pdfs, tab_quiz = st.tabs(["💬 Ask AI Tutor", "📄 View Syllabus", "📝 Quiz"])
@@ -412,7 +547,6 @@ def show_student():
         st.subheader("Ask Your AI Tutor")
         st.caption("Questions are answered strictly from uploaded syllabus documents.")
 
-        pdf_list = api_list_pdfs()
         if not pdf_list:
             st.warning("No syllabus uploaded yet. Ask your admin to upload course materials.", icon="📄")
 
@@ -477,7 +611,6 @@ def show_student():
     with tab_pdfs:
         st.subheader("📄 Course Materials")
 
-        pdf_list = api_list_pdfs()
         if not pdf_list:
             st.info("No documents available yet. Your admin hasn't uploaded any PDFs.", icon="📚")
         else:
@@ -506,7 +639,7 @@ def show_student():
         st.subheader("📝 Practice Quiz")
 
         if st.session_state.quiz_data is None:
-            st.info("👈 Enter a topic in the sidebar and click 'Generate Quiz'.", icon="🎯")
+            st.info("👈 Enter a topic in the sidebar and click '⚡ Generate Quiz'.", icon="🎯")
         else:
             quiz = st.session_state.quiz_data
             st.markdown(f"**Topic:** {quiz['topic']}  |  **{len(quiz['questions'])} questions**")
