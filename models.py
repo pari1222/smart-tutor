@@ -1,10 +1,10 @@
 """
 Pydantic models for request/response validation.
-(Optimized for FastAPI + Pydantic v2)
 """
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from datetime import datetime
 
 
 # ─────────────────────────────────────────────
@@ -12,13 +12,11 @@ from typing import List, Optional
 # ─────────────────────────────────────────────
 
 class QuestionRequest(BaseModel):
-    """Request model for asking a question."""
-    question: str = Field(..., min_length=1, description="User question")
+    question: str = Field(..., min_length=1)
     session_id: Optional[str] = Field(default="default")
 
 
 class QuizRequest(BaseModel):
-    """Request model for generating a quiz."""
     topic: str = Field(..., min_length=1)
     num_questions: int = Field(default=5, ge=1, le=20)
 
@@ -28,16 +26,35 @@ class QuizRequest(BaseModel):
 # ─────────────────────────────────────────────
 
 class MCQOption(BaseModel):
-    """A single MCQ question."""
     question: str
     options: List[str]
     answer: str
 
 
 class QuizResponse(BaseModel):
-    """Response model for quiz generation."""
     topic: str
     questions: List[MCQOption]
+
+
+# ─────────────────────────────────────────────
+# QUIZ SCORE MODELS  (Progress Tracker)
+# ─────────────────────────────────────────────
+
+class QuizScoreRequest(BaseModel):
+    student: str = Field(..., description="Student username")
+    topic: str
+    correct: int = Field(..., ge=0)
+    total: int = Field(..., ge=1)
+    session_id: str
+
+
+class QuizScoreEntry(BaseModel):
+    student: str
+    topic: str
+    correct: int
+    total: int
+    score_pct: float
+    timestamp: str
 
 
 # ─────────────────────────────────────────────
@@ -45,9 +62,8 @@ class QuizResponse(BaseModel):
 # ─────────────────────────────────────────────
 
 class AnswerResponse(BaseModel):
-    """Response model for answers."""
     answer: str
-    sources: List[str] = Field(default_factory=list)  # ✅ FIXED
+    sources: List[str] = Field(default_factory=list)
     session_id: str
 
 
@@ -56,7 +72,6 @@ class AnswerResponse(BaseModel):
 # ─────────────────────────────────────────────
 
 class UploadResponse(BaseModel):
-    """Response model for upload."""
     message: str
     filename: str
     chunks_created: int
@@ -67,6 +82,50 @@ class UploadResponse(BaseModel):
 # ─────────────────────────────────────────────
 
 class HealthResponse(BaseModel):
-    """Health check response."""
     status: str
     message: str
+
+
+# ─────────────────────────────────────────────
+# DOUBT MODELS  (Student → Admin messaging)
+# ─────────────────────────────────────────────
+
+class DoubtRequest(BaseModel):
+    student: str = Field(..., description="Student username")
+    message: str = Field(..., min_length=1)
+    topic: Optional[str] = Field(default="General")
+
+
+class DoubtReply(BaseModel):
+    doubt_id: int
+    reply: str
+
+
+class DoubtEntry(BaseModel):
+    id: int
+    student: str
+    topic: str
+    message: str
+    timestamp: str
+    reply: Optional[str] = None
+    replied_at: Optional[str] = None
+
+
+# ─────────────────────────────────────────────
+# EXAM SCHEDULE MODELS
+# ─────────────────────────────────────────────
+
+class ExamScheduleRequest(BaseModel):
+    pdf_filename: str
+    exam_date: str = Field(..., description="ISO date string YYYY-MM-DD")
+    topic: str = Field(..., description="Exam topic / unit name")
+    num_questions: int = Field(default=10, ge=3, le=20)
+
+
+class ExamEntry(BaseModel):
+    id: int
+    pdf_filename: str
+    topic: str
+    exam_date: str
+    num_questions: int
+    created_at: str
