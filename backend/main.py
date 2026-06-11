@@ -3,7 +3,12 @@ from backend.rag_pipeline import (
     process_pdf,
     ask_pdf,
     generate_quiz_from_pdf,
-    get_db_stats
+    get_db_stats,
+    summarize_document,
+    generate_flashcards,
+    generate_study_notes,
+    extract_topics,
+    generate_learning_path
 )
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from backend.models import (
@@ -15,7 +20,24 @@ from backend.models import (
     UploadResponse,
     StatsResponse,
     DocumentInfoResponse,
-    DeleteResponse
+    DeleteResponse,
+    SummaryRequest,
+    SummaryResponse,
+    FlashcardRequest,
+    FlashcardResponse,
+    Flashcard,
+    NotesRequest,
+    NotesResponse,
+    TopicResponse,
+    TopicRequest,
+    LearningPathRequest,
+    LearningPathResponse,
+    ProgressResponse
+
+)
+from backend.progress import (
+    load_progress,
+    save_progress
 )
 import shutil
 import os
@@ -69,6 +91,27 @@ def ask_question(request: AskRequest):
         request.session_id,
         request.document_id
     )
+
+    progress = load_progress()
+
+    session_id = request.session_id
+
+    if session_id not in progress:
+
+        progress[session_id] = {
+            "questions_asked": 0,
+            "documents_studied": []
+        }
+
+    progress[session_id]["questions_asked"] += 1
+
+    if request.document_id not in progress[session_id]["documents_studied"]:
+
+        progress[session_id]["documents_studied"].append(
+            request.document_id
+        )
+
+    save_progress(progress)
 
     return AskResponse(
         answer=result["answer"],
@@ -199,19 +242,6 @@ def delete_document(filename: str):
     return DeleteResponse(
         message=f"{filename} deleted successfully"
     )
-@app.post("/quiz", response_model=QuizResponse)
-def generate_quiz(request: QuizRequest):
-
-    questions = generate_quiz_from_pdf(
-        request.topic,
-        request.document_id,
-        request.num_questions
-    )
-
-    return QuizResponse(
-        questions=questions
-    )
-
 @app.get(
     "/stats",
     response_model=StatsResponse
@@ -230,4 +260,119 @@ def get_stats():
     return StatsResponse(
         total_documents=len(pdf_files),
         total_chunks=stats["total_chunks"]
+    )
+@app.post(
+    "/summary",
+    response_model=SummaryResponse
+)
+def get_summary(
+    request: SummaryRequest
+):
+
+    summary = summarize_document(
+        request.document_id
+    )
+
+    return SummaryResponse(
+        summary=summary
+    )
+
+@app.post(
+    "/flashcards",
+    response_model=FlashcardResponse
+)
+def flashcards(
+    request: FlashcardRequest
+):
+
+    cards = generate_flashcards(
+        request.document_id,
+        request.num_cards
+    )
+
+    return FlashcardResponse(
+        flashcards=cards
+    )
+@app.post(
+    "/notes",
+    response_model=NotesResponse
+)
+def create_notes(
+    request: NotesRequest
+):
+
+    notes = generate_study_notes(
+        request.document_id
+    )
+
+    return NotesResponse(
+        notes=notes
+    )
+@app.post(
+    "/topics",
+    response_model=TopicResponse
+)
+def get_topics(
+    request: TopicRequest
+):
+
+    topics = extract_topics(
+        request.document_id
+    )
+
+    return TopicResponse(
+        topics=topics
+    )
+@app.post("/quiz", response_model=QuizResponse)
+def generate_quiz(request: QuizRequest):
+
+    questions = generate_quiz_from_pdf(
+        request.topic,
+        request.document_id,
+        request.num_questions
+    )
+
+    print("QUIZ RESULT:", questions)
+
+    return QuizResponse(
+        questions=questions
+    )
+@app.post(
+    "/learning-path",
+    response_model=LearningPathResponse
+)
+def learning_path(
+    request: LearningPathRequest
+):
+
+    path = generate_learning_path(
+        request.document_id
+    )
+
+    return LearningPathResponse(
+        topics=path
+    )
+@app.get(
+    "/progress/{session_id}",
+    response_model=ProgressResponse
+)
+def get_progress(session_id: str):
+
+    progress = load_progress()
+
+    if session_id not in progress:
+
+        raise HTTPException(
+            status_code=404,
+            detail="No progress found"
+        )
+
+    return ProgressResponse(
+        session_id=session_id,
+        questions_asked=progress[
+            session_id
+        ]["questions_asked"],
+        documents_studied=progress[
+            session_id
+        ]["documents_studied"]
     )

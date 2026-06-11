@@ -18,5 +18,25 @@
         "pages": 110,
         "chunks": 135,
         "upload_date": "2026-06-03"
+    },
+    "APi Fundamentals.pdf": {
+        "pages": 12,
+        "chunks": 28,
+        "upload_date": "2026-06-11"
+    },
+    "aws notes.pdf": {
+        "pages": 8,
+        "chunks": 17,
+        "upload_date": "2026-06-11"
+    },
+    "Cypress.pdf": {
+        "pages": 25,
+        "chunks": 39,
+        "upload_date": "2026-06-11"
+    },
+    "API Testing Guide.pdf": {
+        "pages": 7,
+        "chunks": 18,
+        "upload_date": "2026-06-11"
     }
 }

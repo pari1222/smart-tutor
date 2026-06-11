@@ -1,0 +1,10 @@
+{
+    "user1": {
+        "questions_asked": 12,
+        "documents_studied": [
+            "Cypress.pdf",
+            "APi Fundamentals.pdf",
+            "aws notes.pdf"
+        ]
+    }
+}
