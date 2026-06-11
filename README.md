@@ -202,3 +202,14 @@ GET	/documents/{filename}	Open PDF in browser
 - Source Citation Support
 - FastAPI REST APIs
 - Swagger Documentation
+  ##Streamlit
+    The frontend of the AI Tutor application is built using Streamlit to provide an interactive and user-friendly interface for learning from PDF documents.
+It offers a sidebar-based navigation system that allows users to switch between multiple learning modules such as Ask Questions, Summary, Quiz, Flashcards, Study Notes, Topics, Learning Path, and Progress.
+Users can upload PDF files directly through the Streamlit UI, which are then sent to the FastAPI backend for processing and storage.
+A document selection system is implemented using a dropdown, enabling users to choose from available uploaded documents dynamically.
+The application includes an AI chat interface where users can ask context-based questions, and responses are displayed in a conversational format using Streamlit chat components.
+Session state management is used to maintain chat history, ensuring continuity in user interactions without losing previous messages on page refresh.
+Each feature module (summary, quiz, flashcards, notes, topics, learning path) communicates with backend APIs using HTTP requests and displays real-time responses.
+The UI also includes input validation and error handling to manage missing inputs, backend failures, and invalid responses gracefully.
+A health check mechanism is integrated to verify backend connectivity and display system status to the user.
+Overall, Streamlit serves as a lightweight yet powerful frontend layer that connects multiple AI-powered learning functionalities into a unified interface.
